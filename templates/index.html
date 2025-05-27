@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Agendamento - LabCC e LabCan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        .hidden { display: none !important; }
+        .loading { opacity: 0.5; pointer-events: none; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Tela de Login -->
+    <div id="loginScreen" class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+            <div class="text-center mb-8">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">Sistema de Agendamento</h1>
+                <p class="text-gray-600">LabCC e LabCan - UERN</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Matrícula</label>
+                    <input type="text" id="matricula" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Digite sua matrícula" required>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Senha</label>
+                    <input type="password" id="senha"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Digite sua senha" required>
+                </div>
+
+                <div id="loginError" class="hidden mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded"></div>
+
+                <button type="submit" id="loginBtn"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                    Entrar
+                </button>
+            </form>
+
+            <div class="mt-6 p-4 bg-gray-50 rounded-md">
+                <p class="text-sm text-gray-600 mb-2">Credenciais de teste:</p>
+                <p class="text-xs text-gray-500">Matrícula: 123456, Senha: 123456</p>
+                <p class="text-xs text-gray-500">Matrícula: 123457, Senha: 123456</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sistema Principal -->
+    <div id="mainSystem" class="hidden min-h-screen bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div>
+                        <h1 class="text-xl font-semibold text-gray-900">Sistema de Agendamento</h1>
+                        <p class="text-sm text-gray-600">LabCC e LabCan - UERN</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span id="professorNome" class="text-sm text-gray-600"></span>
+                        <button id="logoutBtn" class="text-gray-500 hover:text-gray-700">
+                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex space-x-8">
+                    <button class="nav-btn active border-b-2 border-blue-500 py-4 px-1 text-sm font-medium text-blue-600" data-tab="dashboard">
+                        Dashboard
+                    </button>
+                    <button class="nav-btn border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="reservas">
+                        Minhas Reservas
+                    </button>
+                    <button class="nav-btn border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="nova-reserva">
+                        Nova Reserva
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Content -->
+        <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <!-- Dashboard Tab -->
+            <div id="dashboardTab" class="tab-content">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex items-center">
+                            <div class="bg-blue-100 p-3 rounded-full">
+                                <i data-lucide="calendar" class="h-6 w-6 text-blue-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Total de Reservas</p>
+                                <p id="totalReservas" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex items-center">
+                            <div class="bg-green-100 p-3 rounded-full">
+                                <i data-lucide="check-circle" class="h-6 w-6 text-green-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Confirmadas</p>
+                                <p id="reservasConfirmadas" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex items-center">
+                            <div class="bg-purple-100 p-3 rounded-full">
+                                <i data-lucide="user" class="h-6 w-6 text-purple-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Professor</p>
+                                <p id="professorDash" class="text-lg font-bold text-gray-900">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Próximas Reservas</h2>
+                    <div id="proximasReservas" class="space-y-3">
+                        <!-- Será preenchido dinamicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reservas Tab -->
+            <div id="reservasTab" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow-md">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">Minhas Reservas</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Laboratório</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horário</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disciplina</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reservasTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Será preenchido dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nova Reserva Tab -->
+            <div id="nova-reservaTab" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-6">Nova Reserva</h2>
+                    
+                    <form id="reservaForm" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Laboratório</label>
+                                <select id="laboratorio" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione um laboratório</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Data</label>
+                                <input type="date" id="data" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Horário Início</label>
+                                <input type="time" id="horarioInicio" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Horário Fim</label>
+                                <input type="time" id="horarioFim" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Disciplina</label>
+                                <input type="text" id="disciplina" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nome da disciplina">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Turma</label>
+                                <input type="text" id="turma" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Código da turma">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Descrição da Atividade</label>
+                            <textarea id="descricao" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Descreva brevemente a atividade"></textarea>
+                        </div>
+
+                        <div id="disponibilidadeInfo" class="hidden p-4 rounded-md">
+                            <!-- Status de disponibilidade -->
+                        </div>
+
+                        <div id="reservaError" class="hidden p-3 bg-red-100 border border-red-400 text-red-700 rounded"></div>
+                        <div id="reservaSuccess" class="hidden p-3 bg-green-100 border border-green-400 text-green-700 rounded"></div>
+
+                        <div class="flex justify-end">
+                            <button type="submit" id="reservaBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md transition duration-200">
+                                Criar Reserva
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Estado global da aplicação
+        let currentUser = null;
+        let token = null;
+        let laboratorios = [];
+
+        // Configuração da API
+        const API_BASE = '/api';
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons();
+            checkAuth();
+            setupEventListeners();
+        });
+
+        // Verificar autenticação
+        function checkAuth() {
+            token = localStorage.getItem('token');
+            const professorData = localStorage.getItem('professor');
+            
+            if (token && professorData) {
+                currentUser = JSON.parse(professorData);
+                showMainSystem();
+            } else {
+                showLogin();
+            }
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            // Login form
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            
+            // Navigation
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+            });
+            
+            // Reserva form
+            document.getElementById('reservaForm').addEventListener('submit', handleReserva);
+            
+            // Verificar disponibilidade quando campos mudarem
+            ['laboratorio', 'data', 'horarioInicio', 'horarioFim'].forEach(id => {
+                document.getElementById(id).addEventListener('change', verificarDisponibilidade);
+            });
+        }
+
+        // Mostrar tela de login
+        function showLogin() {
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('mainSystem').classList.add('hidden');
+        }
+
+        // Mostrar sistema principal
+        function showMainSystem() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainSystem').classList.remove('hidden');
+            document.getElementById('professorNome').textContent = currentUser.nome;
+            document.getElementById('professorDash').textContent = currentUser.nome;
+            
+            loadDashboard();
+            carregarLaboratorios();
+        }
+
+        // Handle login
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const matricula = document.getElementById('matricula').value;
+            const senha = document.getElementById('senha').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const errorDiv = document.getElementById('loginError');
+            
+            loginBtn.textContent = 'Entrando...';
+            loginBtn.disabled = true;
+            errorDiv.classList.add('hidden');
+            
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ matricula, senha }),
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    token = data.token;
+                    currentUser = data.professor;
+                    
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('professor', JSON.stringify(currentUser));
+                    
+                    showMainSystem();
+                } else {
+                    const errorData = await response.json();
+                    showError('loginError', errorData.error || 'Erro ao fazer login');
+                }
+            } catch (err) {
+                showError('loginError', 'Erro de conexão com o servidor');
+            } finally {
+                loginBtn.textContent = 'Entrar';
+                loginBtn.disabled = false;
+            }
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('professor');
+            token = null;
+            currentUser = null;
+            showLogin();
+        }
+
+        // Switch tabs
+        function switchTab(tabName) {
+            // Update navigation
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-blue-500', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active', 'border-blue-500', 'text-blue-600');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.remove('border-transparent', 'text-gray-500');
+            
+            // Show/hide content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            document.getElementById(`${tabName}Tab`).classList.remove('hidden');
+            
+            // Load specific data
+            if (tabName === 'reservas') {
+                carregarMinhasReservas();
+            } else if (tabName === 'dashboard') {
+                loadDashboard();
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`${API_BASE}/dashboard`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('totalReservas').textContent = data.totalReservas;
+                    document.getElementById('reservasConfirmadas').textContent = data.reservasConfirmadas;
+                    
+                    // Próximas reservas
+                    const proximasDiv = document.getElementById('proximasReservas');
+                    if (data.proximasReservas.length === 0) {
+                        proximasDiv.innerHTML = '<p class="text-gray-500">Nenhuma reserva próxima</p>';
+                    } else {
+                        proximasDiv.innerHTML = data.proximasReservas.map(reserva => `
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="font-medium">${reserva.laboratorio_nome}</p>
+                                    <p class="text-sm text-gray-600">${formatDate(reserva.data)} - ${reserva.horario_inicio} às ${reserva.horario_fim}</p>
+                                    <p class="text-sm text-gray-600">${reserva.disciplina} - ${reserva.turma}</p>
+                                </div>
+                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Confirmada</span>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao carregar dashboard:', err);
+            }
+        }
+
+        // Carregar laboratórios
+        async function carregarLaboratorios() {
+            try {
+                const response = await fetch(`${API_BASE}/laboratorios`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    laboratorios = await response.json();
+                    const select = document.getElementById('laboratorio');
+                    select.innerHTML = '<option value="">Selecione um laboratório</option>';
+                    
+                    laboratorios.forEach(lab => {
+                        const option = document.createElement('option');
+                        option.value = lab.id;
+                        option.textContent = `${lab.nome} - ${lab.localizacao} (${lab.capacidade} lugares)`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (err) {
+                console.error('Erro ao carregar laboratórios:', err);
+            }
+        }
+
+        // Verificar disponibilidade
+        async function verificarDisponibilidade() {
+            const laboratorio = document.getElementById('laboratorio').value;
+            const data = document.getElementById('data').value;
+            const inicio = document.getElementById('horarioInicio').value;
+            const fim = document.getElementById('horarioFim').value;
+            
+            if (!laboratorio || !data || !inicio || !fim) {
+                document.getElementById('disponibilidadeInfo').classList.add('hidden');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/verificar-disponibilidade`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        laboratorio_id: laboratorio,
+                        data: data,
+                        horario_inicio: inicio,
+                        horario_fim: fim
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    const infoDiv = document.getElementById('disponibilidadeInfo');
+                    
+                    if (result.disponivel) {
+                        infoDiv.className = 'p-4 bg-green-100 border border-green-400 text-green-700 rounded-md';
+                        infoDiv.innerHTML = '<i data-lucide="check-circle" class="inline w-4 h-4 mr-2"></i>Horário disponível!';
+                    } else {
+                        infoDiv.className = 'p-4 bg-red-100 border border-red-400 text-red-700 rounded-md';
+                        infoDiv.innerHTML = '<i data-lucide="x-circle" class="inline w-4 h-4 mr-2"></i>Horário não disponível - há conflito com outra reserva';
+                    }
+                    
+                    infoDiv.classList.remove('hidden');
+                    lucide.createIcons();
+                }
+            } catch (err) {
+                console.error('Erro ao verificar disponibilidade:', err);
+            }
+        }
+
+        // Handle nova reserva
+        async function handleReserva(e) {
+            e.preventDefault();
+            
+            const formData = {
+                laboratorio_id: document.getElementById('laboratorio').value,
+                data: document.getElementById('data').value,
+                horario_inicio: document.getElementById('horarioInicio').value,
+                horario_fim: document.getElementById('horarioFim').value,
+                disciplina: document.getElementById('disciplina').value,
+                turma: document.getElementById('turma').value,
+                descricao_atividade: document.getElementById('descricao').value
+            };
+            
+            const btn = document.getElementById('reservaBtn');
+            btn.textContent = 'Criando...';
+            btn.disabled = true;
+            
+            hideMessages(['reservaError', 'reservaSuccess']);
+            
+            try {
+                const response = await fetch(`${API_BASE}/reservas`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (response.ok) {
+                    showSuccess('reservaSuccess', 'Reserva criada com sucesso!');
+                    document.getElementById('reservaForm').reset();
+                    document.getElementById('disponibilidadeInfo').classList.add('hidden');
+                    loadDashboard(); // Atualizar dashboard
+                } else {
+                    const errorData = await response.json();
+                    showError('reservaError', errorData.error || 'Erro ao criar reserva');
+                }
+            } catch (err) {
+                showError('reservaError', 'Erro de conexão com o servidor');
+            } finally {
+                btn.textContent = 'Criar Reserva';
+                btn.disabled = false;
+            }
+        }
+
+        // Carregar minhas reservas
+        async function carregarMinhasReservas() {
+            try {
+                const response = await fetch(`${API_BASE}/minhas-reservas`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const reservas = await response.json();
+                    const tbody = document.getElementById('reservasTableBody');
+                    
+                    if (reservas.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Nenhuma reserva encontrada</td></tr>';
+                    } else {
+                        tbody.innerHTML = reservas.map(reserva => `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">${reserva.laboratorio_nome}</div>
+                                    <div class="text-sm text-gray-500">${reserva.localizacao}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    ${formatDate(reserva.data)}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    ${reserva.horario_inicio} - ${reserva.horario_fim}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">${reserva.disciplina}</div>
+                                    <div class="text-sm text-gray-500">${reserva.turma}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(reserva.status)}">
+                                        ${getStatusText(reserva.status)}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    ${reserva.status === 'confirmada' ? `
+                                        <button onclick="cancelarReserva(${reserva.id})" 
+                                                class="text-red-600 hover:text-red-900">Cancelar</button>
+                                    ` : '-'}
+                                </td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao carregar reservas:', err);
+            }
+        }
+
+        // Cancelar reserva
+        async function cancelarReserva(reservaId) {
+            if (!confirm('Tem certeza que deseja cancelar esta reserva?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/reservas/${reservaId}/cancelar`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    carregarMinhasReservas(); // Recarregar lista
+                    loadDashboard(); // Atualizar dashboard
+                } else {
+                    alert('Erro ao cancelar reserva');
+                }
+            } catch (err) {
+                alert('Erro de conexão');
+            }
+        }
+
+        // Utility functions
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.classList.remove('hidden');
+        }
+
+        function showSuccess(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.classList.remove('hidden');
+        }
+
+        function hideMessages(elementIds) {
+            elementIds.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'confirmada': return 'bg-green-100 text-green-800';
+                case 'pendente': return 'bg-yellow-100 text-yellow-800';
+                case 'cancelada': return 'bg-red-100 text-red-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 'confirmada': return 'Confirmada';
+                case 'pendente': return 'Pendente';
+                case 'cancelada': return 'Cancelada';
+                default: return status;
+            }
+        }
+
+        // Set minimum date to today
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('data').setAttribute('min', today);
+        });
+    </script>
+</body>
+</html>
